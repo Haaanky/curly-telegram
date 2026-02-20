@@ -1,6 +1,7 @@
-import { Map, Network, BarChart2, Clock, Radio } from 'lucide-react';
+import { Map, BarChart2, Clock, Radio } from 'lucide-react';
 import { useStore } from '../../store';
 import type { AppView } from '../../types';
+import BackgroundMusic from './BackgroundMusic';
 
 const VIEWS: { id: AppView; label: string; icon: React.ReactNode }[] = [
   { id: 'map', label: 'Karta', icon: <Map size={15} /> },
@@ -66,8 +67,13 @@ export default function Topbar() {
         ))}
       </div>
 
+      {/* Background music */}
+      <div className="ml-auto flex items-center">
+        <BackgroundMusic />
+      </div>
+
       {/* Status indicators */}
-      <div className="ml-auto flex items-center gap-3 text-xs">
+      <div className="flex items-center gap-3 text-xs border-l border-white/10 pl-3">
         {activeCount > 0 && (
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
