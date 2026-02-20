@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { MapContainer, TileLayer, useMap, useMapEvents, ZoomControl } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useStore } from '../../store';
 import NodeMarker from './NodeMarker';
 import LinkLine from './LinkLine';
 import PlanningOverlay from './PlanningOverlay';
+
+const Map3DView = lazy(() => import('./Map3DView'));
 
 // Fix default icon issue
 import L from 'leaflet';
@@ -50,6 +52,7 @@ function FitBounds({ nodes }: MapBoundsProps) {
 }
 
 export default function MapView() {
+  const [is3D, setIs3D] = useState(false);
   const nodes = useStore(s => s.nodes);
   const links = useStore(s => s.links);
   const selectedNodeId = useStore(s => s.selectedNodeId);
@@ -91,7 +94,31 @@ export default function MapView() {
     setPlanningFrom(null);
   }, [planningFromNodeId, nodeMap, addLink, setPlanningFrom]);
 
+  const toggle = (
+    <button
+      onClick={() => setIs3D(v => !v)}
+      className="absolute top-3 right-3 z-[1000] flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold tracking-wide shadow-lg border border-white/20 backdrop-blur-sm select-none"
+      style={{ background: is3D ? '#3b82f6' : 'rgba(30,40,30,0.85)', color: 'white' }}
+      title="Växla 2D / 3D"
+    >
+      {is3D ? '2D' : '3D'}
+    </button>
+  );
+
+  if (is3D) {
+    return (
+      <div style={{ height: '100%', width: '100%', position: 'relative' }}>
+        <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-500 text-sm h-full">Laddar 3D…</div>}>
+          <Map3DView />
+        </Suspense>
+        {toggle}
+      </div>
+    );
+  }
+
   return (
+    <div style={{ height: '100%', width: '100%', position: 'relative' }}>
+    {toggle}
     <MapContainer
       center={[59.33, 18.07]}
       zoom={11}
@@ -143,5 +170,6 @@ export default function MapView() {
         />
       )}
     </MapContainer>
+    </div>
   );
 }
