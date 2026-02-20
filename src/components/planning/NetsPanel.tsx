@@ -73,7 +73,7 @@ export default function NetsPanel() {
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
         <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-          Frekvensgnät
+          Frekvensnät
         </span>
         <button
           onClick={() => setShowAdd(v => !v)}
@@ -108,6 +108,15 @@ export default function NetsPanel() {
               {['FM', 'AM', 'USB', 'LSB', 'FSK', 'PSK'].map(w => <option key={w}>{w}</option>)}
             </select>
           </div>
+          <select
+            className="w-full bg-gray-800 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100"
+            value={form.netType}
+            onChange={e => setForm(f => ({ ...f, netType: e.target.value as FrequencyNet['netType'] }))}
+          >
+            {(['COMMAND', 'ADMIN_LOG', 'FIRE_SUPPORT', 'AIR', 'DATA', 'COORD'] as const).map(t => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
           <div>
             <div className="text-[10px] text-gray-500 mb-1">Deltagare</div>
             <div className="flex flex-wrap gap-1">
