@@ -158,6 +158,7 @@ export default function MapView() {
           node={node}
           selected={node.id === selectedNodeId}
           planningFrom={node.id === planningFromNodeId}
+          onPlanningClick={planningFromNodeId ? handleNodeClickForPlanning : undefined}
         />
       ))}
 

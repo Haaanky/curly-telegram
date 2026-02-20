@@ -115,9 +115,10 @@ export default function SpectrumView() {
   const fromNode = selectedLink ? nodes.find(n => n.id === selectedLink.fromNodeId) : null;
   const toNode = selectedLink ? nodes.find(n => n.id === selectedLink.toNodeId) : null;
 
-  // Group links by overlap detection
-  const freqGroups = useMemo(() => {
-    const conflicts: string[] = [];
+  // Detect frequency overlaps – track conflict count (pairs) and affected link IDs separately
+  const freqData = useMemo(() => {
+    const ids = new Set<string>();
+    let count = 0;
     for (let i = 0; i < links.length; i++) {
       for (let j = i + 1; j < links.length; j++) {
         const a = links[i], b = links[j];
@@ -126,11 +127,13 @@ export default function SpectrumView() {
         const bMin = b.frequencyMhz - b.bandwidthKhz / 2000;
         const bMax = b.frequencyMhz + b.bandwidthKhz / 2000;
         if (aMax > bMin && bMax > aMin) {
-          conflicts.push(a.id, b.id);
+          count++;
+          ids.add(a.id);
+          ids.add(b.id);
         }
       }
     }
-    return [...new Set(conflicts)];
+    return { count, ids: [...ids] };
   }, [links]);
 
   return (
@@ -140,9 +143,9 @@ export default function SpectrumView() {
           <h2 className="text-sm font-bold">Spektrumöversikt</h2>
           <p className="text-xs text-gray-500">Frekvensanvändning per band</p>
         </div>
-        {freqGroups.length > 0 && (
+        {freqData.count > 0 && (
           <div className="text-xs bg-red-900/40 border border-red-700/50 text-red-400 px-2 py-1 rounded">
-            ⚠ {freqGroups.length / 2} frekvenskonflikter
+            ⚠ {freqData.count} frekvenskonflikt{freqData.count !== 1 ? 'er' : ''}
           </div>
         )}
       </div>
@@ -172,11 +175,11 @@ export default function SpectrumView() {
         </div>
 
         {/* Frequency conflict details */}
-        {freqGroups.length > 0 && (
+        {freqData.count > 0 && (
           <div className="mt-4 border-t border-white/10 pt-3">
             <div className="text-xs text-red-400 font-semibold mb-2">Frekvenskonflikter</div>
             {links
-              .filter(l => freqGroups.includes(l.id))
+              .filter(l => freqData.ids.includes(l.id))
               .map(l => (
                 <div key={l.id}
                   className="text-xs text-gray-400 bg-red-900/20 border border-red-800/30 rounded px-2 py-1 mb-1 cursor-pointer hover:bg-red-900/40"

@@ -21,22 +21,30 @@ const TYPE_SYMBOL: Record<string, string> = {
 function makeMarkerEl(node: RadioNode, selected: boolean): HTMLElement {
   const el = document.createElement('div');
   const sym = TYPE_SYMBOL[node.type] ?? '●';
+  const color = node.color ?? '#3b82f6';
+
   const ring = selected
-    ? `box-shadow:0 0 0 3px white,0 0 0 5px ${node.color ?? '#3b82f6'};`
-    : '';
+    ? `box-shadow:0 0 0 3px white,0 0 0 6px ${color},0 0 20px ${color}88;`
+    : `box-shadow:0 4px 16px rgba(0,0,0,0.9),0 2px 4px rgba(0,0,0,0.6);`;
+
   el.innerHTML = `
     <div style="
-      background:${node.color ?? '#3b82f6'};color:white;
-      width:36px;height:36px;border-radius:4px;
+      background:linear-gradient(145deg,${color}ee,${color}bb);
+      color:white;
+      width:40px;height:40px;border-radius:6px;
       display:flex;align-items:center;justify-content:center;
-      font-size:18px;font-weight:bold;
-      border:2px solid rgba(255,255,255,0.8);
-      cursor:pointer;${ring}
-    ">${sym}</div>
+      font-size:20px;font-weight:bold;
+      border:2px solid rgba(255,255,255,0.85);
+      cursor:pointer;
+      transition:transform 0.1s ease;
+      ${ring}
+    " onmouseover="this.style.transform='scale(1.12)'" onmouseout="this.style.transform='scale(1)'">${sym}</div>
     <div style="
-      text-align:center;font-size:10px;font-weight:700;
-      color:white;text-shadow:1px 1px 2px #000;
-      margin-top:2px;white-space:nowrap;cursor:pointer;
+      text-align:center;font-size:10px;font-weight:800;
+      color:white;
+      text-shadow:0 1px 4px #000,0 0 8px #000;
+      margin-top:3px;white-space:nowrap;cursor:pointer;
+      letter-spacing:0.05em;
     ">${node.label}</div>
   `;
   return el;
@@ -54,7 +62,6 @@ export default function Map3DView() {
   const selectNode = useStore(s => s.selectNode);
   const selectLink = useStore(s => s.selectLink);
 
-  // Keep mutable refs current for use inside async map callbacks
   const nodesRef = useRef(nodes);
   const linksRef = useRef(links);
   nodesRef.current = nodes;
@@ -96,6 +103,7 @@ export default function Map3DView() {
       container: containerRef.current,
       style: {
         version: 8,
+        glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
         sources: {
           base: {
             type: 'raster',
@@ -111,7 +119,7 @@ export default function Map3DView() {
       },
       center: [18.07, 59.33],
       zoom: 10,
-      pitch: 60,
+      pitch: 62,
       bearing: -20,
       maxPitch: 85,
     });
@@ -119,22 +127,53 @@ export default function Map3DView() {
     mapRef.current = map;
 
     map.on('load', () => {
-      // Terrain DEM (AWS terrarium tiles, free)
+      // Terrain DEM
       map.addSource('terrain-dem', {
         type: 'raster-dem',
         tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
         encoding: 'terrarium',
         tileSize: 256,
         maxzoom: 14,
-        attribution: '© Mapzen',
+        attribution: '© Mapzen / AWS terrain tiles',
       });
-      map.setTerrain({ source: 'terrain-dem', exaggeration: 2.5 });
+      map.setTerrain({ source: 'terrain-dem', exaggeration: 2.8 });
 
-      // Radio links source + layer
+      // Sky / atmosphere
+      map.setSky({
+        'sky-color': '#0a0e1a',
+        'sky-horizon-blend': 0.5,
+        'horizon-color': '#1a2a4a',
+        'horizon-fog-blend': 0.8,
+        'fog-color': '#0d1825',
+        'fog-ground-blend': 0.9,
+      });
+
+      // Radio links — casing layer (glow/shadow under lines)
       map.addSource('links', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] },
       });
+
+      // Glow/shadow beneath lines
+      map.addLayer({
+        id: 'links-glow',
+        type: 'line',
+        source: 'links',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': [
+            'case',
+            ['==', ['get', 'status'], 'active'], 12,
+            ['==', ['get', 'status'], 'failed'], 4,
+            8,
+          ],
+          'line-opacity': 0.18,
+          'line-blur': 6,
+        },
+      });
+
+      // Main link lines
       map.addLayer({
         id: 'links-line',
         type: 'line',
@@ -142,8 +181,24 @@ export default function Map3DView() {
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
           'line-color': ['get', 'color'],
-          'line-width': 2.5,
-          'line-opacity': ['case', ['==', ['get', 'status'], 'failed'], 0.35, 0.85],
+          'line-width': [
+            'case',
+            ['==', ['get', 'status'], 'active'], 4,
+            ['==', ['get', 'status'], 'failed'], 1.5,
+            2.5,
+          ],
+          'line-opacity': [
+            'case',
+            ['==', ['get', 'status'], 'failed'], 0.3,
+            ['==', ['get', 'status'], 'active'], 1.0,
+            0.85,
+          ],
+          'line-dasharray': [
+            'case',
+            ['==', ['get', 'status'], 'failed'],
+            ['literal', [3, 3]],
+            ['literal', [1]],
+          ],
         },
       });
 
@@ -162,7 +217,10 @@ export default function Map3DView() {
     });
 
     map.on('click', () => { selectNode(null); selectLink(null); });
-    map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+
+    // Controls
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
+    map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
 
     return () => {
       loadedRef.current = false;
@@ -173,7 +231,6 @@ export default function Map3DView() {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Sync links whenever data changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(updateLinks, [links, nodes]);
 

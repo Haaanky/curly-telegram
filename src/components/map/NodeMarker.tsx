@@ -8,6 +8,7 @@ interface Props {
   node: RadioNode;
   selected: boolean;
   planningFrom: boolean;
+  onPlanningClick?: (nodeId: string) => void;
 }
 
 const TYPE_SYMBOL: Record<string, string> = {
@@ -39,18 +40,19 @@ function makeIcon(node: RadioNode, selected: boolean, planningFrom: boolean): L.
   return L.divIcon({ html, className: '', iconSize: [36, 52], iconAnchor: [18, 18] });
 }
 
-export default function NodeMarker({ node, selected, planningFrom }: Props) {
+export default function NodeMarker({ node, selected, planningFrom, onPlanningClick }: Props) {
   const selectNode = useStore(s => s.selectNode);
   const setPlanningFrom = useStore(s => s.setPlanningFrom);
   const planningFromNodeId = useStore(s => s.planningFromNodeId);
   const moveNode = useStore(s => s.moveNode);
 
   const handleClick = useCallback(() => {
-    if (planningFromNodeId && planningFromNodeId !== node.id) {
-      // Second click in planning mode → handled by parent
+    if (planningFromNodeId && planningFromNodeId !== node.id && onPlanningClick) {
+      onPlanningClick(node.id);
+      return;
     }
     selectNode(node.id);
-  }, [node.id, planningFromNodeId, selectNode]);
+  }, [node.id, planningFromNodeId, selectNode, onPlanningClick]);
 
   const handleDragEnd = useCallback((e: L.LeafletEvent) => {
     const marker = e.target as L.Marker;
