@@ -5,4 +5,8 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [tailwindcss(), react()],
   base: '/curly-telegram/',
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.ts'],
+  },
 })

@@ -2,10 +2,24 @@ import type { LinkBudget, RadioEquipment, RadioLink } from '../types';
 import type { LatLng } from '../types';
 import { haversineKm } from './geo';
 
+export {
+  calcItuLinkBudget,
+  fspl as freespacePathLossDb,
+  gasAbsorption,
+  rainAttenuation,
+  cloudFogAttenuation,
+  clutterLoss,
+  knifeEdgeDiffraction,
+  fresnelClearance,
+  connectionQuality,
+  thermalNoise,
+  selectModel,
+} from './ituCalculations';
+
 /** Free Space Path Loss (dB) — Friis equation
  *  FSPL = 20·log₁₀(d_km) + 20·log₁₀(f_MHz) + 32.44
  */
-export function freespacePathLossDb(distKm: number, freqMhz: number): number {
+export function freespacePathLoss(distKm: number, freqMhz: number): number {
   if (distKm <= 0 || freqMhz <= 0) return 0;
   return 20 * Math.log10(distKm) + 20 * Math.log10(freqMhz) + 32.44;
 }
@@ -42,7 +56,7 @@ export function fresnelRadius1(distKm: number, freqMhz: number): number {
   return Math.sqrt((lambda * d) / 4); // at midpoint
 }
 
-/** Calculate full link budget */
+/** Calculate full link budget (simple model — use calcItuLinkBudget for ITU accuracy) */
 export function calcLinkBudget(
   from: LatLng,
   to: LatLng,
@@ -58,7 +72,7 @@ export function calcLinkBudget(
   const rxGainDbi = toEquip?.antennaGainDbi ?? 0;
   const rxSensDbm = toEquip?.rxSensitivityDbm ?? -110;
 
-  const fsplDb = freespacePathLossDb(distKm, freqMhz);
+  const fsplDb = freespacePathLoss(distKm, freqMhz);
   const terrainLossDb = estimateTerrainLoss(distKm, freqMhz);
   const atmosphericLossDb = atmosphericLoss(distKm, freqMhz);
 
